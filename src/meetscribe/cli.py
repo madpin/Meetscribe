@@ -1,12 +1,10 @@
 import click
-import os
 import asyncio
 from pprint import pprint
+
 from .ingest import find_audio_files
-from .transcribe import transcribe_audio
-from .gcal import get_calendar_service, find_meeting_for_timestamp
-from .jira import get_jira_client, extract_jira_key_from_text, get_jira_ticket_details
-from .llm import generate_notes
+from .processing import process_single_file
+from .daemon import DaemonRunner
 
 @click.group()
 def cli():
@@ -19,69 +17,66 @@ def cli():
 @click.argument('audio_folder', type=click.Path(exists=True, file_okay=False, dir_okay=True))
 def process_meetings(audio_folder):
     """
-    Processes all audio files in a given folder, linking them to calendar
-    events and Jira tickets, transcribing them, and generating notes.
+    Processes all audio files in a folder, generating notes for each.
     """
-    click.echo(f"Processing audio files from: {audio_folder}")
+    click.echo(f"Scanning for audio files in: {audio_folder}")
+    audio_files_to_process = find_audio_files(audio_folder)
 
-    # --- Step 1: Ingest Audio Files ---
-    audio_files = find_audio_files(audio_folder)
-    if not audio_files:
-        click.echo("No audio files found in the directory.")
+    if not audio_files_to_process:
+        click.echo("No audio files found.")
         return
-    click.echo(f"Found {len(audio_files)} audio file(s).")
 
-    # --- Step 2: Initialize Services ---
-    click.echo("\nInitializing external services...")
-    gcal_service = get_calendar_service()
-    jira_client = get_jira_client()
+    click.echo(f"Found {len(audio_files_to_process)} audio file(s). Starting processing...")
 
-    # --- Step 3: Process each file ---
-    async def run_processing():
-        processing_tasks = []
-        for audio_file in audio_files:
-            processing_tasks.append(process_single_file(audio_file))
-
-        processed_data = await asyncio.gather(*processing_tasks)
+    async def run_all():
+        tasks = [process_single_file(f['path']) for f in audio_files_to_process]
+        results = await asyncio.gather(*tasks)
 
         click.echo("\n--- Processing Complete ---")
-        for data in processed_data:
-            click.echo(f"\n--- Results for {data['audio_path']} ---")
-            # Print context, but handle notes separately for better formatting
-            notes = data.pop('notes', 'No notes generated.')
-            pprint(data)
-            click.echo("\n--- Generated Notes ---")
-            click.echo(notes)
-            click.echo("---------------------------------")
+        for data in results:
+            if data:
+                click.echo(f"\n--- Results for {data.get('audio_path', 'N/A')} ---")
+                notes = data.pop('notes', 'No notes generated.')
+                pprint(data)
+                click.echo("\n--- Generated Notes ---")
+                click.echo(notes)
+                click.echo("---------------------------------")
 
-    async def process_single_file(audio_file):
-        """Orchestrates processing for a single audio file."""
-        path = audio_file['path']
-        timestamp = audio_file['timestamp']
-        context = {'audio_path': path, 'timestamp': timestamp}
-
-        # Transcription
-        context['transcript'] = await transcribe_audio(path)
-
-        # Calendar Matching
-        if gcal_service:
-            meeting = find_meeting_for_timestamp(gcal_service, timestamp)
-            if meeting:
-                context['calendar_event'] = {
-                    'summary': meeting.get('summary'),
-                    'start': meeting['start'].get('dateTime'),
-                    'description': meeting.get('description'),
-                }
-                # Jira Matching (if calendar event found)
-                jira_key = extract_jira_key_from_text(meeting.get('description', ''))
-                if jira_key and jira_client:
-                    context['jira_ticket'] = get_jira_ticket_details(jira_client, jira_key)
-
-        # LLM Note Generation
-        context['notes'] = await generate_notes(context)
-        return context
-
-    asyncio.run(run_processing())
+    asyncio.run(run_all())
 
 
-# This script is now run via __main__.py
+# --- Daemon Commands ---
+
+@click.group(name="daemon")
+def daemon_group():
+    """Manage the Meetscribe background service."""
+    pass
+
+@daemon_group.command("start")
+def start_daemon():
+    """Starts the Meetscribe daemon."""
+    runner = DaemonRunner()
+    runner.start()
+
+@daemon_group.command("stop")
+def stop_daemon():
+    """Stops the Meetscribe daemon."""
+    runner = DaemonRunner()
+    runner.stop()
+
+@daemon_group.command("status")
+def status_daemon():
+    """Checks the status of the Meetscribe daemon."""
+    runner = DaemonRunner()
+    status = runner.get_status()
+    click.echo(status)
+
+@daemon_group.command("logs")
+@click.option('--lines', '-n', default=50, help='Number of log lines to show.')
+def logs_daemon(lines):
+    """Shows the latest logs from the daemon."""
+    runner = DaemonRunner()
+    runner.show_logs(tail_lines=lines)
+
+# Add the daemon command group to the main CLI
+cli.add_command(daemon_group)

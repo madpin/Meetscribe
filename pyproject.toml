@@ -32,6 +32,10 @@ dependencies = [
     "jira",
     "openai",
     "click",
+    "PyYAML",
+    "pydub",
+    "python-daemon-3k",
+    "watchdog",
 ]
 
 [project.optional-dependencies]
@@ -41,6 +45,10 @@ dev = [
     "black",
     "flake8",
     "mypy",
+    "PyYAML",
+    "pydub",
+    "python-daemon-3k",
+    "watchdog",
 ]
 
 [project.scripts]

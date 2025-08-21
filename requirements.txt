@@ -5,6 +5,10 @@ google-auth-oauthlib>=1.0.0
 jira>=3.0.0
 openai>=1.0.0
 click>=8.0.0
+PyYAML>=6.0
+pydub>=0.25.0
+python-daemon-3k>=3.0.0
+watchdog>=3.0.0
 
 # Development dependencies (optional)
 # pytest>=7.0.0

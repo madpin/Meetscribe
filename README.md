@@ -21,6 +21,14 @@ This project was built by Jules, an AI software engineer, based on a design docu
 
 ## Installation
 
+### Prerequisites
+
+- Python 3.8+
+- **ffmpeg**: The audio processing features in Meetscribe rely on `pydub`, which requires `ffmpeg` to be installed on your system for handling various audio formats.
+  - On **macOS** (using [Homebrew](https://brew.sh/)): `brew install ffmpeg`
+  - On **Debian/Ubuntu**: `sudo apt-get install ffmpeg`
+  - On **Windows**: Download from the [official website](https://ffmpeg.org/download.html) and add the `bin` directory to your system's PATH.
+
 ### From Source
 
 ```bash

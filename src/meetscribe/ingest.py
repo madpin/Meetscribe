@@ -2,6 +2,7 @@ import os
 import re
 from datetime import datetime
 from typing import List, Dict, Optional
+from pathlib import Path
 
 SUPPORTED_FORMATS = ('.mp3', '.wav', '.m4a')
 
@@ -49,3 +50,23 @@ def find_audio_files(directory: str) -> List[Dict]:
             })
 
     return audio_files
+
+
+def get_timestamp_from_path(filepath: str) -> Optional[datetime]:
+    """
+    Extracts a timestamp from a single file's name or modification time.
+    """
+    path = Path(filepath)
+    filename = path.name
+
+    timestamp = _extract_timestamp_from_filename(filename)
+
+    if not timestamp:
+        try:
+            # Fallback to file's modification time
+            mtime = os.path.getmtime(filepath)
+            timestamp = datetime.fromtimestamp(mtime)
+        except OSError:
+            return None # Could not get timestamp
+
+    return timestamp
