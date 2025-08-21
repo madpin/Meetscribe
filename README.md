@@ -1,6 +1,8 @@
-# Audio-to-Meeting Notes Automation Tool
+# Meetscribe
 
-This tool is a command-line application designed to automate the process of turning audio recordings of meetings into structured, actionable notes. It integrates with Google Calendar and Jira to provide rich context to the notes, and uses Deepgram for transcription and an OpenAI model for note generation.
+**Audio-to-Meeting Notes Automation Tool**
+
+Meetscribe is a command-line application designed to automate the process of turning audio recordings of meetings into structured, actionable notes. It integrates with Google Calendar and Jira to provide rich context to the notes, and uses Deepgram for transcription and an OpenAI model for note generation.
 
 This project was built by Jules, an AI software engineer, based on a design document for Thiago, a Software Engineer at Indeed.
 
@@ -14,27 +16,30 @@ This project was built by Jules, an AI software engineer, based on a design docu
     -   Transcribes audio using Deepgram's speech-to-text API.
     -   Generates structured notes (Summary, Key Decisions, Action Items) using an OpenAI LLM.
 -   **CLI Interface**: Easy-to-use command-line interface powered by `click`.
+-   **Daemon Mode**: Background service that automatically processes new audio files based on configurable rules.
+-   **Smart Audio Analysis**: Intelligent silence detection to avoid processing low-quality recordings.
 
-## Setup and Installation
+## Installation
 
-### 1. Clone the Repository
-
-```bash
-git clone <repository_url>
-cd <repository_directory>
-```
-
-### 2. Install Dependencies
-
-It is recommended to use a virtual environment.
+### From Source
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-pip install -r requirements.txt
+git clone https://github.com/madpin/Meetscribe.git
+cd meetscribe
+pip install -e .
 ```
 
-### 3. Configure Credentials
+### Development Installation
+
+```bash
+git clone https://github.com/madpin/Meetscribe.git
+cd meetscribe
+pip install -e ".[dev]"
+```
+
+## Setup and Configuration
+
+### 1. Configure Credentials
 
 This tool requires API access to several services.
 
@@ -66,6 +71,11 @@ The first time you run the tool, it will open a browser window for you to author
     ```bash
     export OPENAI_API_KEY="your_openai_api_key"
     ```
+3.  (Optional) If you want to use a custom or self-hosted OpenAI-compatible API, set the base URL as an environment variable:
+    ```bash
+    export OPENAI_API_BASE_URL="https://api.openai.com/v1"
+    ```
+    By default, the tool uses `https://api.openai.com/v1` as the base URL.
 
 #### d) Jira (Optional)
 
@@ -81,18 +91,148 @@ The first time you run the tool, it will open a browser window for you to author
 
 Place your audio recordings in a folder. The tool can extract timestamps from filenames with a `YYYY-MM-DD` format (e.g., `meeting_2025-08-20.mp3`) or use the file's modification time.
 
-To run the tool, use the `process-meetings` command, passing the path to your audio folder:
+### Command Line Usage
 
 ```bash
-python -m src.autonotes process-meetings /path/to/your/audio/folder
+# Process all audio files in a directory
+meetscribe process-meetings /path/to/your/audio/folder
+
+# Or run directly with Python
+python -m src.meetscribe process-meetings /path/to/your/audio/folder
 ```
 
-The tool will process each audio file and print the context and generated notes to the console.
+### Daemon Mode
+
+Meetscribe includes a daemon service that automatically monitors a folder for new audio files and processes them based on configurable rules:
+
+```bash
+# Start the daemon service
+meetscribe daemon start /path/to/your/audio/folder
+
+# Stop the daemon service
+meetscribe daemon stop
+
+# Check daemon status
+meetscribe daemon status
+
+# View daemon logs
+meetscribe daemon logs
+```
+
+#### Daemon Configuration
+
+The daemon automatically processes audio files that meet these criteria:
+- **Duration**: Files shorter than 1 hour (configurable)
+- **Quality**: Files with less than 30% silence content
+- **Format**: Supported audio formats (`.mp3`, `.wav`, `.m4a`)
+
+You can customize these rules by creating a configuration file:
+
+```yaml
+# ~/.meetscribe/config.yaml
+daemon:
+  max_duration_hours: 1.0
+  max_silence_percentage: 30.0
+  supported_formats: [".mp3", ".wav", ".m4a"]
+  watch_folders:
+    - /path/to/primary/audio/folder
+    - /path/to/secondary/audio/folder
+  processing:
+    auto_transcribe: true
+    auto_generate_notes: true
+    delete_processed_files: false
+```
+
+#### Silence Detection
+
+The daemon includes intelligent silence detection to avoid processing low-quality recordings:
+- Analyzes audio files for silence patterns
+- Skips files with more than 30% silence content
+- Provides detailed silence analysis reports
+- Configurable silence thresholds
+
+### Programmatic Usage
+
+```python
+from meetscribe import find_audio_files, transcribe_audio, generate_notes
+
+# Find audio files in a directory
+audio_files = find_audio_files("/path/to/audio")
+
+# Transcribe a single file
+transcript = await transcribe_audio("/path/to/audio/meeting.mp3")
+
+# Generate notes from context
+notes = await generate_notes({
+    'transcript': transcript,
+    'calendar_event': {...},
+    'jira_ticket': {...}
+})
+```
+
+## Future Features
+
+### Silence Removal
+
+Planned for future releases, Meetscribe will include advanced audio preprocessing capabilities:
+
+- **Automatic Silence Trimming**: Remove leading and trailing silence from audio files
+- **Smart Silence Detection**: Identify and remove excessive silence within recordings
+- **Configurable Thresholds**: Adjustable silence detection sensitivity
+- **Batch Processing**: Process multiple files with silence removal
+- **Quality Preservation**: Maintain audio quality while removing unwanted silence
+
+This feature will help improve transcription accuracy and reduce processing time for recordings with long periods of silence.
+
+## Project Structure
+
+```
+meetscribe/
+├── src/
+│   └── meetscribe/           # Main package
+│       ├── __init__.py       # Package exports
+│       ├── cli.py            # Command-line interface
+│       ├── ingest.py         # Audio file ingestion
+│       ├── transcribe.py     # Audio transcription
+│       ├── gcal.py           # Google Calendar integration
+│       ├── jira.py           # Jira integration
+│       ├── llm.py            # LLM note generation
+│       └── __main__.py       # Entry point
+├── tests/                    # Test suite
+├── sample_audio/             # Sample audio files
+├── pyproject.toml           # Project configuration
+├── requirements.txt          # Dependencies
+└── README.md                # This file
+```
 
 ## Running Tests
 
-To run the unit tests:
+```bash
+# Run all tests
+python -m pytest
+
+# Run specific test file
+python -m pytest tests/test_logic.py
+
+# Run with coverage
+python -m pytest --cov=src.meetscribe
+```
+
+## Development
+
+### Code Quality
 
 ```bash
-python -m unittest tests/test_logic.py
+# Format code
+black src/ tests/
+
+# Lint code
+flake8 src/ tests/
+
+# Type checking
+mypy src/
 ```
+
+## License
+
+MIT License - see LICENSE file for details.

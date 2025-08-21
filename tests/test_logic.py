@@ -5,9 +5,9 @@ import shutil
 from datetime import datetime
 
 # Import the functions to be tested
-from src.autonotes.ingest import find_audio_files
-from src.autonotes.jira import extract_jira_key_from_text
-from src.autonotes.llm import _build_prompt
+from src.meetscribe.ingest import find_audio_files
+from src.meetscribe.jira import extract_jira_key_from_text
+from src.meetscribe.llm import _build_prompt
 
 class TestLogic(unittest.TestCase):
 

@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meetscribe"
+version = "0.1.0"
+description = "Audio-to-Meeting Notes Automation Tool"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Thiago Pinto", email = "thiago@example.com"}
+]
+keywords = ["meeting", "transcription", "notes", "automation", "audio"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "deepgram-sdk",
+    "google-api-python-client",
+    "google-auth-oauthlib",
+    "jira",
+    "openai",
+    "click",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "black",
+    "flake8",
+    "mypy",
+]
+
+[project.scripts]
+meetscribe = "meetscribe.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/meetscribe"
+Repository = "https://github.com/yourusername/meetscribe"
+Issues = "https://github.com/yourusername/meetscribe/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
